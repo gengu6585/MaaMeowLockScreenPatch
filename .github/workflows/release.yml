@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-36
+            build-tools;35.0.0
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare release artifact
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          OUT="app/build/outputs/apk/debug/MaaMeowLockScreenPatch-${TAG}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$OUT"
+          echo "APK_PATH=$OUT" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MaaMeow Lock Screen Patch ${{ env.RELEASE_TAG }}
+          generate_release_notes: true
+          files: ${{ env.APK_PATH }}
+          body: |
+            ## 安装
+
+            1. 下载下方 APK 并安装
+            2. LSPosed 管理器 → 启用 **MaaMeow 锁屏拉起补丁**
+            3. 作用域勾选 **android (system_server)** + **com.aliothmoon.maameow**
+            4. 软重启 framework 或重启手机
+
+            ## 版本
+
+            - Tag: `${{ env.RELEASE_TAG }}`
+            - `versionName`: `${{ env.RELEASE_TAG }}`（对应 `app/build.gradle.kts`）
+
+            LSPosed 模块可直接加载 debug 签名 APK，无需额外签名。
