@@ -1,0 +1,23 @@
+# Build
+/build/
+/app/build/
+*.apk
+*.aab
+*.dex
+
+# Gradle
+.gradle/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Keystore (do not commit)
+keystore/
+*.jks
+*.keystore
+
+# Reports
+build/reports/

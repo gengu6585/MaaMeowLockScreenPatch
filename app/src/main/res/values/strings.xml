@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MaaMeow 锁屏拉起补丁</string>
+    <string name="xposed_desc">锁屏/后台下绕过 MAA-Meow 内置定时锁屏检查，跳过 30s 倒计时，并自动触发任务执行（需配合后台模式）。</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- LSPosed scope: 系统框架进程 + 目标应用进程 -->
+    <string-array name="xposed_scope">
+        <item>android</item>
+        <item>com.aliothmoon.maameow</item>
+    </string-array>
+</resources>
