@@ -2,9 +2,9 @@
 name: maa-meow
 description: >-
   Maa-Meow（猫猫 MAA）明日方舟 Android 自动化：PRTS 搜/下作业、RUN_TASKS Intent、
-  Fight/Copilot、虚拟屏截图、MaaCore 日志诊断、连续任务（默认不杀游戏）。
-  仅供手机容器内 Agent 使用（root@tutu.gugenzzz.top，路径 ~/.cursor/skills/maa-meow/）；
-  不要在开发者 Mac 上当运行环境执行。
+  Fight/Copilot、虚拟屏截图、连续任务（默认不杀游戏）。
+  默认直接 launch，不要先跑 diagnose/selftest。
+  仅供手机容器内 Agent（root@tutu.gugenzzz.top，~/.cursor/skills/maa-meow/）。
 ---
 
 # Maa-Meow 工具链
@@ -53,28 +53,33 @@ description: >-
 3. Meow 设置 **关闭**「任务结束后关闭游戏」
 4. 截图只看 `maa-screenshot.sh` → `virtual_*.png`
 5. 进红丝绒关卡优先 **`MODE=fight`**（走 `AD.json`）；纯 Copilot 从主界面不可靠
+6. **不要每次任务前跑诊断**：`diagnose_maa.sh` / `selftest_scripts.sh` / 全量 `ensure_ad_resources.sh` 都偏慢；默认直接开刷，**只有失败或用户要求排错时**再跑
 
 ---
 
-## 一分钟流程
+## 默认：直接开刷（推荐）
+
+用户要刷关 / 跑任务时，**第一步就是发 Intent**，不要先 diagnose：
 
 ```bash
-SKILL=~/.cursor/skills/maa-meow/scripts
 export ADB='adb -s emulator-5554'
-
-bash $SKILL/diagnose_maa.sh
-bash $SKILL/ensure_ad_resources.sh          # 确保 AD-1 导航资源
 
 # 连续刷 AD-1（有游戏则不 StartUp）
 $ADB shell su -c 'MODE=fight STAGE_NAME=AD-1 AUTO_STARTUP=auto FORCE_STOP_GAME=false CLOSEDOWN_AFTER=false sh /data/local/tmp/launch_cli_tasks.sh'
-
-bash $SKILL/watch_maa_logs.sh --tail 40
-bash $SKILL/maa-screenshot.sh
 ```
 
 停：`$ADB shell su -c 'sh /data/local/tmp/launch_cli_tasks.sh --stop'`
 
-脚本自测：`bash $SKILL/selftest_scripts.sh`（加 `--live` 会发 STOP）
+可选轻量确认（仍比 diagnose 快）：看脚本打印的 `WITH_STARTUP=... FORCE_STOP_GAME=false`，或 `watch_maa_logs.sh --tail 20`。
+
+### 何时才诊断 / 补资源
+
+| 动作 | 时机 |
+|---|---|
+| `diagnose_maa.sh` | 进关失败、Intent 无反应、游戏没了、用户明确要排查 |
+| `ensure_ad_resources.sh` | Fight AD 报缺关 / 无 `AD-OpenOpt`；**不是**每次刷之前 |
+| `selftest_scripts.sh` | 改脚本后自测；日常任务 **不要跑** |
+| `maa-screenshot.sh` | 怀疑卡界面、要看虚拟屏；成功刷关不必每轮截 |
 
 ---
 
@@ -126,7 +131,7 @@ bash $SKILL/maa-screenshot.sh
 
 `stage=AD-1` → `StageNavigationTask` → `AD.json` 的 `AD-OpenOpt`（红丝绒 / 演出开始）→ 点关卡 → 代理指挥。
 
-依赖：`resource/tasks/Stages/AD.json` **必须含 AD-1**（上游默认可能只有 AD-3/6/7/8）。用 `ensure_ad_resources.sh`。
+依赖：`resource/tasks/Stages/AD.json` **必须含 AD-1**（上游默认可能只有 AD-3/6/7/8）。已部署过则跳过；仅报缺关 / 无 `AD-OpenOpt` 时再跑 `ensure_ad_resources.sh`。
 
 ### Copilot
 
@@ -184,7 +189,9 @@ bash $SKILL/deploy_copilot_jobs.sh /tmp/arknights-ad-jobs
 | MaaCore | `.../debug/asst.log` |
 
 ```bash
+SKILL=~/.cursor/skills/maa-meow/scripts
 bash $SKILL/watch_maa_logs.sh --tail 50
+# 仍看不清再：
 bash $SKILL/diagnose_maa.sh
 ```
 
@@ -215,8 +222,8 @@ bash $SKILL/diagnose_maa.sh
 
 | 脚本 | 作用 |
 |---|---|
-| `diagnose_maa.sh` | 环境诊断 |
-| `ensure_ad_resources.sh` | 写入含 AD-1 的 AD.json |
+| `diagnose_maa.sh` | 环境诊断（**仅排错**；勿每次任务前跑） |
+| `ensure_ad_resources.sh` | 写入含 AD-1 的 AD.json（缺资源时） |
 | `launch_cli_tasks.sh` | RUN_TASKS（设备 `/data/local/tmp/`） |
 | `launch_copilot.sh` | LAUNCH_COPILOT |
 | `maa_status.sh` / `watch_maa_logs.sh` / `maa-screenshot.sh` | 状态/日志/截图 |
@@ -247,9 +254,14 @@ bash $SKILL/diagnose_maa.sh
 
 ## Agent 检查清单
 
-1. `diagnose_maa.sh`  
-2. `ensure_ad_resources.sh`（刷 AD 时）  
-3. `launch_cli_tasks.sh` 确认打印 `WITH_STARTUP=... FORCE_STOP_GAME=false`  
-4. `watch_maa_logs` + `maa-screenshot`  
-5. 进关用 Fight；Copilot 确认 `stage_name` 与作业 `actions`  
-6. 不随意 force-stop Meow
+**日常开刷（默认）：**
+
+1. 直接 `launch_cli_tasks.sh` / 对应 Intent；确认打印 `FORCE_STOP_GAME=false`
+2. 进关用 Fight；Copilot 确认 `stage_name` 与作业 `actions`
+3. 不随意 force-stop Meow
+4. **跳过** `diagnose_maa.sh` / `selftest` / 无必要的 `ensure_ad`
+
+**仅当失败或用户要排错：**
+
+5. `watch_maa_logs` → 仍不够再 `diagnose_maa.sh` / `maa-screenshot`
+6. AD 缺导航时再 `ensure_ad_resources.sh`

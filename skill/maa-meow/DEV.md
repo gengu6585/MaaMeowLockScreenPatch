@@ -148,22 +148,21 @@ ssh root@tutu.gugenzzz.top "adb -s emulator-5554 shell su -c \
 
 DeepWiki / 上游文档可查 `"No stage template available"`、`StageNavigationTask`、`MultiCopilotTaskPlugin` 差异。
 
-## 测试清单（合并前）
+## 测试清单（合并前 / 改脚本后）
+
+日常运维 Agent **不要**按本清单开刷（`diagnose` 慢）；这是开发者验证用。SKILL 默认流程是直接 `launch_cli_tasks.sh`。
 
 ```bash
-# 手机 Ubuntu
+# 手机 Ubuntu（合并前自测）
 export ADB='adb -s emulator-5554'
 bash ~/.cursor/skills/maa-meow/scripts/selftest_scripts.sh
-bash ~/.cursor/skills/maa-meow/scripts/diagnose_maa.sh
+bash ~/.cursor/skills/maa-meow/scripts/diagnose_maa.sh   # 合并前一次即可
 
 # 热路径：游戏已在 → 不应带 StartUp、不应 force_stop
 $ADB shell su -c 'MODE=fight STAGE_NAME=AD-1 AUTO_STARTUP=auto FORCE_STOP_GAME=false \
   CLOSEDOWN_AFTER=false sh /data/local/tmp/launch_cli_tasks.sh'
-# logcat 应有: WITH_STARTUP 跳过（脚本打印）、buildConnectConfig force_stop=false、start Success
 $ADB shell su -c 'sh /data/local/tmp/launch_cli_tasks.sh --stop'
 ```
-
-人工再确认：`watch_maa_logs.sh` + `maa-screenshot.sh` 的 `virtual_*.png`。
 
 ## 已知坑（写功能时默认规避）
 
