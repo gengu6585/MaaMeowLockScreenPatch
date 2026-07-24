@@ -37,6 +37,11 @@ public class MainHook implements IXposedHookLoadPackage {
     public static final String ACTION_SHOW_SCHEDULE =
             TARGET_PKG + ".action.SHOW_SCHEDULE_EXECUTION";
     public static final String ACTION_SCHEDULE_TRIGGER = TARGET_PKG + ".SCHEDULE_TRIGGER";
+    /** 外部触发抄作业列表（由本模块扩展，非 MAA 官方 action） */
+    public static final String ACTION_LAUNCH_COPILOT = CopilotLaunchHelper.ACTION_LAUNCH_COPILOT;
+    /** 通用任务链（maa-cli 风格 AsstAppendTask） */
+    public static final String ACTION_RUN_TASKS = CliTaskLaunchHelper.ACTION_RUN_TASKS;
+    public static final String ACTION_STOP_TASKS = CliTaskLaunchHelper.ACTION_STOP_TASKS;
 
     private static final String ACTION_PAGE_READY_ALARM =
             "com.tinkerlab.maameowpatch.action.PAGE_READY_ALARM";
@@ -179,7 +184,40 @@ public class MainHook implements IXposedHookLoadPackage {
         hookBackgroundTaskViewModel(cl);
         hookCoordinator(cl);
         hookStartAppSkipForceStop(cl);
+        hookConnectForceStopFlag(cl);
         hookMainActivity(cl);
+    }
+
+    /**
+     * MaaCompositionService.buildConnectConfig 默认 force_stop=true 会杀游戏。
+     * RUN_TASKS 可通过 extra_force_stop_game=false 改写为 false，便于热调试。
+     */
+    private void hookConnectForceStopFlag(ClassLoader cl) {
+        try {
+            Class<?> svc = XposedHelpers.findClass(
+                    "com.aliothmoon.maameow.domain.service.MaaCompositionService", cl);
+            XposedHelpers.findAndHookMethod(svc, "buildConnectConfig",
+                    int.class, int.class, int.class, new XC_MethodHook() {
+                        @Override
+                        protected void afterHookedMethod(MethodHookParam param) {
+                            if (CliTaskLaunchHelper.shouldForceStopGame()) return;
+                            Object result = param.getResult();
+                            if (!(result instanceof String)) return;
+                            String json = (String) result;
+                            if (!json.contains("\"force_stop\"")) return;
+                            String patched = json
+                                    .replace("\"force_stop\":true", "\"force_stop\":false")
+                                    .replace("\"force_stop\": true", "\"force_stop\": false");
+                            if (!patched.equals(json)) {
+                                param.setResult(patched);
+                                Log.i(TAG, "buildConnectConfig force_stop=false");
+                            }
+                        }
+                    });
+            Log.i(TAG, "hooked buildConnectConfig force_stop flag");
+        } catch (Throwable t) {
+            Log.e(TAG, "hookConnectForceStopFlag failed", t);
+        }
     }
 
     /**
@@ -769,16 +807,20 @@ public class MainHook implements IXposedHookLoadPackage {
             XposedHelpers.findAndHookMethod(act, "onCreate", Bundle.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
-                    rememberAppContext((Activity) param.thisObject);
-                    logLaunchIntent((Activity) param.thisObject, "onCreate");
+                    Activity a = (Activity) param.thisObject;
+                    rememberAppContext(a);
+                    logLaunchIntent(a, "onCreate");
+                    maybeHandleExternalActions(a, a.getIntent(), cl);
                 }
             });
             XposedHelpers.findAndHookMethod(act, "onNewIntent", Intent.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
                     Activity a = (Activity) param.thisObject;
-                    a.setIntent((Intent) param.args[0]);
+                    Intent in = (Intent) param.args[0];
+                    a.setIntent(in);
                     logLaunchIntent(a, "onNewIntent");
+                    maybeHandleExternalActions(a, in, cl);
                 }
             });
         } catch (Throwable t) {
@@ -790,8 +832,23 @@ public class MainHook implements IXposedHookLoadPackage {
         Intent in = a.getIntent();
         if (in == null) return;
         String action = in.getAction();
-        if (ACTION_LAUNCH.equals(action) || ACTION_SHOW_SCHEDULE.equals(action)) {
+        if (ACTION_LAUNCH.equals(action) || ACTION_SHOW_SCHEDULE.equals(action)
+                || ACTION_LAUNCH_COPILOT.equals(action)
+                || ACTION_RUN_TASKS.equals(action)
+                || ACTION_STOP_TASKS.equals(action)) {
             Log.i(TAG, "MainActivity." + where + " " + describeIntent(in));
+        }
+    }
+
+    private static void maybeHandleExternalActions(Activity activity, Intent intent, ClassLoader cl) {
+        if (intent == null || intent.getAction() == null) return;
+        String action = intent.getAction();
+        if (ACTION_LAUNCH_COPILOT.equals(action)) {
+            CopilotLaunchHelper.handleLaunchIntent(activity, intent, cl);
+            return;
+        }
+        if (ACTION_RUN_TASKS.equals(action) || ACTION_STOP_TASKS.equals(action)) {
+            CliTaskLaunchHelper.handleIntent(activity, intent, cl);
         }
     }
 

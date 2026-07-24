@@ -44,6 +44,69 @@ MaaMeowLockScreenPatch/
 | 应用层 | hook `AppSettingsManager.runMode`（`StateFlow<RunMode>.getValue()`）一律返回 `RunMode.BACKGROUND`，从而让 `ScheduledLaunchCoordinator.handleLaunch` 的 `isForegroundMode && !allowForeground` 永远短路为 false |
 | 全程日志 | 在 `coordinator.onLaunch / handleLaunch / promote / onPageReady` 与 `MainActivity.onCreate / onNewIntent` 与 `MaaCompositionService.state` 变化处打 log（tag=`MaaMeowPatch`），便于锁屏下确认任务执行 |
 
+## v1.2 RUN_TASKS（maa-cli）
+
+把 Meow 当命令行任务引擎：
+
+| Action | 说明 |
+|---|---|
+| `com.tinkerlab.maameowpatch.action.RUN_TASKS` | 任意 `MaaTaskType` 任务链 |
+| `com.tinkerlab.maameowpatch.action.STOP_TASKS` | 只停任务 |
+| `com.tinkerlab.maameowpatch.action.LAUNCH_COPILOT` | 作业列表（可选 StartUp） |
+
+**默认不杀游戏**（`extra_force_stop_game=false`、`extra_closedown_after=false`）。  
+脚本：`launch_cli_tasks.sh`（`AUTO_STARTUP=auto`）。完整说明见 `skill/maa-meow/SKILL.md`。
+
+```bash
+adb shell su -c 'MODE=fight STAGE_NAME=AD-1 AUTO_STARTUP=auto FORCE_STOP_GAME=false sh /data/local/tmp/launch_cli_tasks.sh'
+```
+
+### 一键脚本
+
+```bash
+# 1) 推送 16 关 prts 作业 + task_list.json + config.json
+sh scripts/deploy_copilot_jobs.sh
+
+# 2) 锁屏/后台触发（虚拟屏 Copilot 列表模式）
+adb shell su -c 'sh /data/local/tmp/launch_copilot.sh'
+```
+
+### 直发 am
+
+```bash
+am start -n com.aliothmoon.maameow/.MainActivity \
+  -a com.tinkerlab.maameowpatch.action.LAUNCH_COPILOT \
+  -f 0x28800000 \
+  --es extra_task_list_path "/storage/emulated/0/Android/data/com.aliothmoon.maameow/files/Maa/copilot/task_list.json" \
+
+  --es extra_config_path "/storage/emulated/0/Android/data/com.aliothmoon.maameow/files/Maa/copilot/config.json" \
+  --ei extra_tab_index 0 \
+  --ez extra_force_start true
+```
+
+成功日志应出现：
+
+```
+MaaMeowPatch: LAUNCH_COPILOT taskList=...
+MaaMeowPatch: LAUNCH_COPILOT startCopilot invoked
+MaaMeowPatch: MaaCompositionService.state -> RUNNING
+```
+
+### Vector / LSPosed CLI（无需重启手机）
+
+安装/升级模块后，在 LSPosed 管理器勾选作用域，或用 root CLI：
+
+```bash
+/data/adb/lspd/cli modules enable com.tinkerlab.maameowpatch
+/data/adb/lspd/cli scope set com.tinkerlab.maameowpatch android/0 com.aliothmoon.maameow/0
+# 然后 force-stop MAA 让 hook 重新注入
+am force-stop com.aliothmoon.maameow
+```
+
+若 CLI 报 `Connection refused`，在 LSPosed 管理器里手动启用模块并「软重启」一次。
+
+---
+
 ## 编译
 
 ```bash
