@@ -1,10 +1,21 @@
 # 开发者指南（追加功能用）
 
-面向后续给 **MaaMeowLockScreenPatch** / **maa-meow skill** 加能力的人。运营向说明见同目录 [SKILL.md](./SKILL.md)。
+面向在 **开发者 Mac** 上改 **MaaMeowLockScreenPatch** / 维护 skill 源码的人。  
+手机容器里 Agent 的运维手册见 [SKILL.md](./SKILL.md)。
+
+## 两个执行方（不要搞混）
+
+| 谁 | 在哪 | 读什么 | 做什么 |
+|---|---|---|---|
+| **运维 Agent** | 手机 Ubuntu 容器 `root@tutu.gugenzzz.top` | `/root/.cursor/skills/maa-meow/`（SKILL.md + scripts） | adb、搜作业、发 Intent、截图诊断 |
+| **开发者 / 改代码 Agent** | Mac（本仓库） | `~/Code/tinkerlab/MaaMeowLockScreenPatch` | 改 Java、编 APK、改 skill **源**、`git push`、`rsync` 到手机 |
+
+**结论**：skill **运行时**只在手机容器 Agent 上执行；Mac 只持有 skill **源码**并同步过去。  
+运维 Agent 不应执行 `install_local_to_phone.sh`、不应依赖 Mac 路径。
 
 ## 仓库与职责边界
 
-| 仓库 | 路径（本机） | 改什么 |
+| 仓库 | 路径（Mac） | 改什么 |
 |---|---|---|
 | **MaaMeowLockScreenPatch** | `~/Code/tinkerlab/MaaMeowLockScreenPatch` | LSPosed 模块、Intent API、设备脚本、本 skill（`skill/maa-meow/`） |
 | **MAA-Meow** | `~/Code/tinkerlab/MAA-Meow-src` | 上游壳（一般只读对照；勿把补丁逻辑塞进上游除非明确 fork） |
@@ -13,7 +24,12 @@
 
 远程：`https://github.com/gengu6585/MaaMeowLockScreenPatch.git`（`main`）。
 
-手机侧 skill 部署副本：`root@tutu.gugenzzz.top:/root/.cursor/skills/maa-meow/`（改完本仓库后 `rsync` 过去）。
+手机侧 skill **运行副本**：`root@tutu.gugenzzz.top:/root/.cursor/skills/maa-meow/`  
+改完本仓库后必须：
+
+```bash
+rsync -az skill/maa-meow/ root@tutu.gugenzzz.top:/root/.cursor/skills/maa-meow/
+```
 
 ## 模块架构（加功能前先读）
 
@@ -63,18 +79,19 @@ MainHook.maybeHandleExternalActions
 
 | 层 | 位置 | 说明 |
 |---|---|---|
-| 仓库 `scripts/` | 编译部署、设备 launch | `install_local_to_phone.sh` 推 APK + `/data/local/tmp/launch_*.sh` |
-| `skill/maa-meow/scripts/` | Agent 运维 | 诊断、搜作业、截图、自测；**与 `scripts/` 同名文件改完要两边同步或只维护 skill 再 cp** |
+| 仓库 `scripts/`（Mac） | 编译部署、设备 launch | `install_local_to_phone.sh` 推 APK + `/data/local/tmp/launch_*.sh` |
+| `skill/maa-meow/scripts/` | **手机容器 Agent** 运维 | 诊断、搜作业、截图、自测；与 `scripts/` 同名文件改完要两边同步或只维护 skill 再 cp |
 
-当前建议：**以 `skill/maa-meow/scripts/` 为运维脚本源**，改完后：
+当前建议：**以 `skill/maa-meow/scripts/` 为运维脚本源**，在 Mac 改完后：
 
 ```bash
 cp skill/maa-meow/scripts/launch_cli_tasks.sh skill/maa-meow/scripts/launch_copilot.sh scripts/
 rsync -az skill/maa-meow/ root@tutu.gugenzzz.top:/root/.cursor/skills/maa-meow/
-adb push skill/maa-meow/scripts/launch_cli_tasks.sh /data/local/tmp/
+# 需要设备侧 launch 时，从手机容器执行 adb push，或由 install_local_to_phone.sh 推送
+ssh root@tutu.gugenzzz.top 'adb -s emulator-5554 push /root/.cursor/skills/maa-meow/scripts/launch_cli_tasks.sh /data/local/tmp/'
 ```
 
-## 本地开发循环
+## Mac 开发循环（编补丁，不是 skill 运行）
 
 ```bash
 cd ~/Code/tinkerlab/MaaMeowLockScreenPatch
@@ -154,7 +171,7 @@ $ADB shell su -c 'sh /data/local/tmp/launch_cli_tasks.sh --stop'
 2. Meow 设置「任务结束后关闭游戏」与 Intent 热调试冲突；文档要求用户关掉。
 3. **Copilot `copilot_list`** 走 MultiCopilot（模板/OCR），**不是** Fight 的 `AD.json` `AD-OpenOpt` 路径。
 4. 作业必须有 **`actions`**；`stage_name` 是地图 ID（`act43side_01`），导航显示名是 `AD-1`。
-5. 本机访问 `prts.maa.plus` 可能超时——搜/下作业优先在 **手机侧**跑 Python。
+5. 开发者 Mac 访问 `prts.maa.plus` 可能超时——搜/下作业必须由 **手机容器 Agent** 跑 Python（skill scripts）。
 6. 不要在 Helper 里再抄一份 `invokeSuspend`；改 `MeowBridge`。
 7. `keystore/`、`local.properties` 永不提交。
 
@@ -178,11 +195,11 @@ $ADB shell su -c 'sh /data/local/tmp/launch_cli_tasks.sh --stop'
 ```
 MaaMeowLockScreenPatch/
 ├── app/src/main/java/.../maameowpatch/   # Java 补丁
-├── scripts/                              # 本机部署 + 设备 launch 副本
-├── skill/maa-meow/
-│   ├── SKILL.md                          # Agent 运维
-│   ├── DEV.md                            # 本文件
+├── scripts/                              # Mac 部署 + 设备 launch 副本
+├── skill/maa-meow/                       # 源码；rsync → 手机 /root/.cursor/skills/maa-meow/
+│   ├── SKILL.md                          # 手机容器 Agent 运维（运行时读这个）
+│   ├── DEV.md                            # Mac 开发者追加功能（本文件）
 │   ├── resources/AD.json                 # 红丝绒导航补丁
-│   └── scripts/                          # 诊断 / 作业 / 自测
+│   └── scripts/                          # 诊断 / 作业 / 自测（在手机容器执行）
 └── README.md
 ```

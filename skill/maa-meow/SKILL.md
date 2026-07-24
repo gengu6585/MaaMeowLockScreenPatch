@@ -3,28 +3,42 @@ name: maa-meow
 description: >-
   Maa-Meow（猫猫 MAA）明日方舟 Android 自动化：PRTS 搜/下作业、RUN_TASKS Intent、
   Fight/Copilot、虚拟屏截图、MaaCore 日志诊断、连续任务（默认不杀游戏）。
-  在 SSH 主机 root@tutu.gugenzzz.top 使用。
+  仅供手机容器内 Agent 使用（root@tutu.gugenzzz.top，路径 ~/.cursor/skills/maa-meow/）；
+  不要在开发者 Mac 上当运行环境执行。
 ---
 
 # Maa-Meow 工具链
 
+## 执行环境（必读）
+
+| 角色 | 在哪 | 做什么 |
+|---|---|---|
+| **本 skill 的 Agent** | 手机 Ubuntu 容器 `root@tutu.gugenzzz.top` | 读本目录、跑 `scripts/`、`adb` 控 HyperOS、搜/下作业、发 Intent |
+| **Skill 安装路径** | `/root/.cursor/skills/maa-meow/` | Agent 只认这里，不要找 Mac 路径 |
+| **补丁编译 / 改 Java** | 开发者 Mac 仓库 | **不是**本 skill 的运行方；见 [DEV.md](./DEV.md) |
+
+你（手机容器里的 Agent）应：
+
+1. 直接用 `~/.cursor/skills/maa-meow/scripts/...`（或本 skill 相对路径）
+2. 用 `adb -s emulator-5554`（容器内已连模拟器/HyperOS）
+3. **不要** `ssh` 回 Mac、**不要**假设存在 `~/Code/tinkerlab/...`
+4. 需要新版本 skill 时，由人在 Mac `rsync` 过来；你只消费当前目录
+
 ## 项目背景
 
-明日方舟自动化栈在本机环境拆成三层：
+自动化栈三层（对照用，运行时你只碰 adb / Meow / 本 skill）：
 
-| 层 | 是什么 | 仓库 / 路径 |
+| 层 | 是什么 | 仓库 |
 |---|---|---|
 | **MaaCore** | C++ 识别与任务引擎（Fight/Copilot/…） | [MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) |
-| **MAA-Meow** | Android 壳：虚拟屏、Koin、Profile/定时、资源包 | [Aliothmoon/MAA-Meow](https://github.com/Aliothmoon/MAA-Meow) · 本机 `~/Code/tinkerlab/MAA-Meow-src` |
-| **LockScreenPatch** | LSPosed：锁屏拉起 + **RUN_TASKS/LAUNCH_COPILOT**（当 maa-cli） | [gengu6585/MaaMeowLockScreenPatch](https://github.com/gengu6585/MaaMeowLockScreenPatch) · 本机 `~/Code/tinkerlab/MaaMeowLockScreenPatch` |
+| **MAA-Meow** | Android 壳：虚拟屏、Koin、Profile/定时、资源包 | [Aliothmoon/MAA-Meow](https://github.com/Aliothmoon/MAA-Meow) |
+| **LockScreenPatch** | LSPosed：锁屏拉起 + **RUN_TASKS/LAUNCH_COPILOT**（当 maa-cli） | [gengu6585/MaaMeowLockScreenPatch](https://github.com/gengu6585/MaaMeowLockScreenPatch) |
 
 作业市场：[prts.plus](https://prts.plus) / API `https://prts.maa.plus`。
 
-**本 skill 跑在手机 Ubuntu（`root@tutu.gugenzzz.top`）**：经 `adb -s emulator-5554` 控 HyperOS；游戏在 Meow 的 **VirtualDisplay** 上，物理屏截图看不到战斗。
+游戏在 Meow 的 **VirtualDisplay** 上，物理屏截图看不到战斗；截图只用 `maa-screenshot.sh` → `virtual_*.png`。
 
-开发约定：补丁在本机改 → `scripts/install_local_to_phone.sh` 部署；**不要**改 `cursor-byok`。手机 `/workspace/tinkerlab/...` 仅作对照。
-
-**追加功能**：见同目录 [DEV.md](./DEV.md)（架构、Intent 约定、开发循环、测试清单、已知坑）。
+**追加功能 / 改补丁**：见 [DEV.md](./DEV.md)（给改仓库的人；手机 Agent 运维仍以本文为准）。
 
 ## 何时用
 
@@ -68,8 +82,9 @@ bash $SKILL/maa-screenshot.sh
 
 | 项 | 值 |
 |---|---|
-| SSH | `root@tutu.gugenzzz.top` |
-| ADB | `adb -s emulator-5554` |
+| Agent / skill 主机 | 手机容器 `root@tutu.gugenzzz.top`（**不是**开发者 Mac） |
+| Skill 路径 | `/root/.cursor/skills/maa-meow/` |
+| ADB | `adb -s emulator-5554`（在容器内直接跑） |
 | Meow | `com.aliothmoon.maameow` |
 | 游戏主进程 | `com.hypergryph.arknights`（`:pushcore` 不算） |
 | 补丁 | `com.tinkerlab.maameowpatch` ≥ **1.2.1** |
@@ -226,7 +241,7 @@ bash $SKILL/diagnose_maa.sh
 
 `force_stop` 标志粘滞到下一次 Intent（避免 connect 晚于 start 返回被还原）。
 
-部署：本机 `bash scripts/install_local_to_phone.sh`（会 force-stop **仅 Meow** 以重载模块 → 之后需要 StartUp 重建 VD）。
+补丁 APK 由开发者在 **Mac 仓库** 编签部署（`install_local_to_phone.sh`）；会 force-stop **仅 Meow** 重载模块 → VD 可能丢，之后需要 StartUp。手机 Agent **不负责**编译 APK。
 
 ---
 
