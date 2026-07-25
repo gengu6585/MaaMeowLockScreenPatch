@@ -79,7 +79,7 @@
 
 ## 本 skill 怎么下发
 
-入口：`meow_sse.sh` + JSON 字符串（见 [SKILL.md](../SKILL.md)）。`run_tasks.sh` 的 MODE 仅 legacy。
+入口：`meow_sse.sh` + JSON 字符串（见 [SKILL.md](../SKILL.md)）。
 
 ```bash
 # 基建专精（游戏里需已安排训练室干员）

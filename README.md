@@ -10,7 +10,6 @@ MaaMeowLockScreenPatch/
 ├── app/                    # LSPosed 模块（含进程内 HTTP :17878）
 ├── scripts/
 │   ├── install_local_to_phone.sh   # 编译→签名→装到 tutu 手机
-│   ├── run_tasks.sh                # legacy MODE 入口副本（可选）
 │   └── launch_profile.sh           # 锁屏按 Meow Profile 名拉起（调度用）
 ├── skill/maa-meow/         # 运维 skill 源（rsync → 手机）；入口 meow_sse.sh
 └── README.md

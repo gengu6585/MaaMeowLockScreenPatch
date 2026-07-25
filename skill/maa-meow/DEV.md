@@ -36,7 +36,6 @@ am start（仅拉起）→ MeowHttpServer :17878
 ## 约定
 
 - 运维入口：**`meow_sse.sh` + JSON 字符串**（不要为每次请求写临时文件）
-- `run_tasks.sh` = legacy（MODE/env）；新编排勿依赖
 - `force_stop_game=false`、`closedown_after=false`
 - SSE `timeout_ms` 只关流，不 stop 任务
 

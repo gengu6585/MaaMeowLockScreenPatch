@@ -49,17 +49,18 @@ UNSIGNED="$PROJ_ROOT/app/build/outputs/apk/release/app-release-unsigned.apk"
 
 echo "[deploy] scp + install on $PHONE_SSH ..."
 scp "$APK_PATH" "$PHONE_SSH:/tmp/maameow-patch.apk"
-cp "$PROJ_ROOT/skill/maa-meow/scripts/run_tasks.sh" "$PROJ_ROOT/scripts/run_tasks.sh"
-scp "$PROJ_ROOT/scripts/run_tasks.sh" "$PHONE_SSH:/tmp/run_tasks.sh"
-rsync -az "$PROJ_ROOT/skill/maa-meow/" "$PHONE_SSH:/root/.cursor/skills/maa-meow/"
+scp "$PROJ_ROOT/scripts/launch_profile.sh" "$PHONE_SSH:/tmp/launch_profile.sh"
+rsync -az --delete "$PROJ_ROOT/skill/maa-meow/" "$PHONE_SSH:/root/.cursor/skills/maa-meow/"
 
 ssh "$PHONE_SSH" bash -s <<REMOTE
 set -euo pipefail
 ADB='$ADB_REMOTE'
 \$ADB push /tmp/maameow-patch.apk /data/local/tmp/maameow-patch.apk
 \$ADB shell su -c 'pm install -r -t /data/local/tmp/maameow-patch.apk'
-\$ADB push /tmp/run_tasks.sh /data/local/tmp/run_tasks.sh
-\$ADB shell su -c 'chmod 755 /data/local/tmp/run_tasks.sh'
+\$ADB push /tmp/launch_profile.sh /data/local/tmp/launch_profile.sh
+\$ADB shell su -c 'chmod 755 /data/local/tmp/launch_profile.sh'
+# 清掉已废弃的设备侧编排脚本
+\$ADB shell su -c 'rm -f /data/local/tmp/run_tasks.sh /data/local/tmp/sse_fmt.sh /data/local/tmp/sse_fmt.py' || true
 \$ADB shell su -c '$LSP_CLI modules enable $MODULE_PKG' || echo 'WARN: lsp enable failed'
 \$ADB shell su -c '$LSP_CLI scope set $MODULE_PKG android/0 $MAA_PKG/0' || echo 'WARN: lsp scope failed'
 # 仅重载 Meow 使模块生效；不杀明日方舟
@@ -67,6 +68,6 @@ ADB='$ADB_REMOTE'
 echo OK
 REMOTE
 
-echo "Installed 1.2.14+. Example:"
-echo "  ssh $PHONE_SSH \"adb -s emulator-5554 shell su -c 'curl -s http://127.0.0.1:17878/v1/health'\""
+echo "Installed. Example:"
+echo "  ssh $PHONE_SSH \"bash ~/.cursor/skills/maa-meow/scripts/meow_sse.sh '{\\\"tasks\\\":[...]}'\""
 echo "  NOTE: install force-stops Meow only (may interrupt running tasks / VD)."

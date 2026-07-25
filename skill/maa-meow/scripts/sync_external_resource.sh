@@ -2,7 +2,7 @@
 # 同步可 git 管理的外置 MaaCore 资源（MaaResource 动态包 + 官方 tasks + 本地 overrides）。
 #
 # ## Agent 提示
-# - 只维护磁盘文件；启用须 run_tasks / HTTP 带 RESOURCE_PATH。
+# - 只维护磁盘文件；启用须 HTTP / meow_sse body 带 resource_path。
 # - MaaResource 仓库本身不含 tasks/；tasks 从 MaaAssistantArknights 稀疏拉取。
 # - 验证：sync 后看 --status；跑任务后看 /sdcard/maa/last_intent_resource.log
 # - 详见 references/EXTERNAL_RESOURCE.md
