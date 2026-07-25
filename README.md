@@ -7,22 +7,12 @@ LSPosed 模块：解锁 `com.aliothmoon.maameow`（MAA-Meow，明日方舟小助
 
 ```
 MaaMeowLockScreenPatch/
-├── app/
-│   ├── build.gradle.kts
-│   ├── proguard-rules.pro
-│   └── src/main/
-│       ├── AndroidManifest.xml            # xposedscope = android + maa-meow
-│       ├── assets/xposed_init             # 入口 = com.tinkerlab.maameowpatch.MainHook
-│       ├── java/com/tinkerlab/maameowpatch/MainHook.java
-│       └── res/values/{strings,arrays}.xml
+├── app/                    # LSPosed 模块（含进程内 HTTP :17878）
 ├── scripts/
-│   ├── install_and_verify.sh              # 端到端：编译→签名→推送→拉起→看日志
-│   ├── launch_profile.sh                  # 锁屏可用、按 Profile 名拉起
-│   └── watch_logs.sh                      # logcat 实时监控
-├── build.gradle.kts
-├── settings.gradle.kts
-├── gradle.properties
-├── local.properties                       # sdk.dir = /Users/gugen/Library/Android/sdk
+│   ├── install_local_to_phone.sh   # 编译→签名→装到 tutu 手机
+│   ├── run_tasks.sh                # legacy MODE 入口副本（可选）
+│   └── launch_profile.sh           # 锁屏按 Meow Profile 名拉起（调度用）
+├── skill/maa-meow/         # 运维 skill 源（rsync → 手机）；入口 meow_sse.sh
 └── README.md
 ```
 
@@ -44,56 +34,28 @@ MaaMeowLockScreenPatch/
 | 应用层 | hook `AppSettingsManager.runMode`（`StateFlow<RunMode>.getValue()`）一律返回 `RunMode.BACKGROUND`，从而让 `ScheduledLaunchCoordinator.handleLaunch` 的 `isForegroundMode && !allowForeground` 永远短路为 false |
 | 全程日志 | 在 `coordinator.onLaunch / handleLaunch / promote / onPageReady` 与 `MainActivity.onCreate / onNewIntent` 与 `MaaCompositionService.state` 变化处打 log（tag=`MaaMeowPatch`），便于锁屏下确认任务执行 |
 
-## v1.2 RUN_TASKS（maa-cli）
+## HTTP 任务引擎（≥1.2.15）
 
-把 Meow 当命令行任务引擎：
-
-| Action | 说明 |
-|---|---|
-| `com.tinkerlab.maameowpatch.action.RUN_TASKS` | 任意 `MaaTaskType` 任务链 |
-| `com.tinkerlab.maameowpatch.action.STOP_TASKS` | 只停任务 |
-| `com.tinkerlab.maameowpatch.action.LAUNCH_COPILOT` | 作业列表（可选 StartUp） |
-
-**默认不杀游戏**（`extra_force_stop_game=false`、`extra_closedown_after=false`）。  
-脚本：`launch_cli_tasks.sh`（`AUTO_STARTUP=auto`）。完整说明见 `skill/maa-meow/SKILL.md`。
+Meow 进程内 `http://127.0.0.1:17878`。运维入口：`skill/maa-meow/scripts/meow_sse.sh`（JSON 字符串 + 实时 SSE）。
 
 ```bash
-adb shell su -c 'MODE=fight STAGE_NAME=AD-1 AUTO_STARTUP=auto FORCE_STOP_GAME=false sh /data/local/tmp/launch_cli_tasks.sh'
+# 安装补丁
+bash scripts/install_local_to_phone.sh
+rsync -az skill/maa-meow/ root@tutu.gugenzzz.top:/root/.cursor/skills/maa-meow/
+
+# tutu 直连（仅 health 不通时用 adb am start）
+bash ~/.cursor/skills/maa-meow/scripts/meow_sse.sh '{
+  "force_stop_game": false,
+  "closedown_after": false,
+  "tasks": [{"type":"Fight","params":{"stage":"AD-1","medicine":0,"times":1}}]
+}'
+
+curl -s http://127.0.0.1:17878/v1/status
 ```
 
-### 一键脚本
-
-```bash
-# 1) 推送 16 关 prts 作业 + task_list.json + config.json
-sh scripts/deploy_copilot_jobs.sh
-
-# 2) 锁屏/后台触发（虚拟屏 Copilot 列表模式）
-adb shell su -c 'sh /data/local/tmp/launch_copilot.sh'
-```
-
-### 直发 am
-
-```bash
-am start -n com.aliothmoon.maameow/.MainActivity \
-  -a com.tinkerlab.maameowpatch.action.LAUNCH_COPILOT \
-  -f 0x28800000 \
-  --es extra_task_list_path "/storage/emulated/0/Android/data/com.aliothmoon.maameow/files/Maa/copilot/task_list.json" \
-
-  --es extra_config_path "/storage/emulated/0/Android/data/com.aliothmoon.maameow/files/Maa/copilot/config.json" \
-  --ei extra_tab_index 0 \
-  --ez extra_force_start true
-```
-
-成功日志应出现：
-
-```
-MaaMeowPatch: LAUNCH_COPILOT taskList=...
-MaaMeowPatch: LAUNCH_COPILOT startCopilot invoked
-MaaMeowPatch: MaaCompositionService.state -> RUNNING
-```
+完整说明：`skill/maa-meow/SKILL.md`。
 
 ### Vector / LSPosed CLI（无需重启手机）
-
 安装/升级模块后，在 LSPosed 管理器勾选作用域，或用 root CLI：
 
 ```bash
@@ -165,18 +127,14 @@ sh scripts/install_and_verify.sh "配置-1"
    `/data/data/com.aliothmoon.maameow/files/datastore/task_chain.preferences_pb`
    里反查 UUID。
 
-### 直发 Intent（不用脚本）
+### 日常任务请用 HTTP（不要直发任务 Intent）
 
 ```bash
-adb shell am start -W \
-    -n com.aliothmoon.maameow/.MainActivity \
-    -a com.aliothmoon.maameow.action.LAUNCH_PROFILE \
-    --es extra_profile_id "<UUID>" \
-    --ez extra_force_start true \
-    --activity-new-task
+bash ~/.cursor/skills/maa-meow/scripts/meow_sse.sh '{"tasks":[...]}'
+curl -sS http://127.0.0.1:17878/v1/status
 ```
 
-`--activity-new-task` 在锁屏时是必须的（系统层 patch 会自动加一次，重复无害）。
+锁屏调度仍可用 `launch_profile.sh` / Meow 自带 `LAUNCH_PROFILE`。
 
 ## 验证 / 日志
 

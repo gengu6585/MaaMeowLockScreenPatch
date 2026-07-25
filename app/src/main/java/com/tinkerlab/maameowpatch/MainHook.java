@@ -42,6 +42,9 @@ public class MainHook implements IXposedHookLoadPackage {
     /** 通用任务链（maa-cli 风格 AsstAppendTask） */
     public static final String ACTION_RUN_TASKS = CliTaskLaunchHelper.ACTION_RUN_TASKS;
     public static final String ACTION_STOP_TASKS = CliTaskLaunchHelper.ACTION_STOP_TASKS;
+    /** 仅配置/重载外部 resource（不跑任务） */
+    public static final String ACTION_RELOAD_RESOURCE = CliTaskLaunchHelper.ACTION_RELOAD_RESOURCE;
+    public static final String ACTION_QUERY_STATUS = TaskRunTracker.ACTION_QUERY_STATUS;
 
     private static final String ACTION_PAGE_READY_ALARM =
             "com.tinkerlab.maameowpatch.action.PAGE_READY_ALARM";
@@ -176,6 +179,8 @@ public class MainHook implements IXposedHookLoadPackage {
      * ====================================================================== */
     private void hookApp(ClassLoader cl) {
         sTargetClassLoader = cl;
+        TaskRunTracker.hook(cl);
+        ResourceOverrideHelper.hook(cl);
         hookScheduleExecutionService(cl);
         hookScheduleLockscreenBypass(cl);
         hookScheduleLaunchIntent(cl);
@@ -809,6 +814,8 @@ public class MainHook implements IXposedHookLoadPackage {
                 protected void afterHookedMethod(MethodHookParam param) {
                     Activity a = (Activity) param.thisObject;
                     rememberAppContext(a);
+                    MeowRuntime.attach(a, cl);
+                    MeowHttpServerBootstrap.ensureStarted();
                     logLaunchIntent(a, "onCreate");
                     maybeHandleExternalActions(a, a.getIntent(), cl);
                 }
@@ -819,6 +826,8 @@ public class MainHook implements IXposedHookLoadPackage {
                     Activity a = (Activity) param.thisObject;
                     Intent in = (Intent) param.args[0];
                     a.setIntent(in);
+                    MeowRuntime.attach(a, cl);
+                    MeowHttpServerBootstrap.ensureStarted();
                     logLaunchIntent(a, "onNewIntent");
                     maybeHandleExternalActions(a, in, cl);
                 }
@@ -835,7 +844,9 @@ public class MainHook implements IXposedHookLoadPackage {
         if (ACTION_LAUNCH.equals(action) || ACTION_SHOW_SCHEDULE.equals(action)
                 || ACTION_LAUNCH_COPILOT.equals(action)
                 || ACTION_RUN_TASKS.equals(action)
-                || ACTION_STOP_TASKS.equals(action)) {
+                || ACTION_STOP_TASKS.equals(action)
+                || ACTION_RELOAD_RESOURCE.equals(action)
+                || ACTION_QUERY_STATUS.equals(action)) {
             Log.i(TAG, "MainActivity." + where + " " + describeIntent(in));
         }
     }
@@ -847,7 +858,12 @@ public class MainHook implements IXposedHookLoadPackage {
             CopilotLaunchHelper.handleLaunchIntent(activity, intent, cl);
             return;
         }
-        if (ACTION_RUN_TASKS.equals(action) || ACTION_STOP_TASKS.equals(action)) {
+        if (ACTION_QUERY_STATUS.equals(action)) {
+            TaskRunTracker.handleIntent(activity, intent, cl);
+            return;
+        }
+        if (ACTION_RUN_TASKS.equals(action) || ACTION_STOP_TASKS.equals(action)
+                || ACTION_RELOAD_RESOURCE.equals(action)) {
             CliTaskLaunchHelper.handleIntent(activity, intent, cl);
         }
     }

@@ -1,4 +1,6 @@
 #!/bin/bash
+# ## Agent 提示: 见 SKILL.md；主任务入口是 meow_sse.sh
+#
 # 查看 MaaCore / Meow 运行日志（在手机 Termux/Ubuntu 或 adb shell 外层执行）
 # 用法:
 #   bash ~/.cursor/skills/maa-meow/scripts/watch_maa_logs.sh

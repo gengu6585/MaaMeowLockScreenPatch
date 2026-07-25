@@ -257,12 +257,39 @@ public final class MeowBridge {
         }
     }
 
-    public static void waitServiceReady(ClassLoader cl, long timeoutMs) throws InterruptedException {
-        long deadline = System.currentTimeMillis() + timeoutMs;
-        while (System.currentTimeMillis() < deadline) {
-            if (!isRemoteServiceConnecting(cl)) return;
-            Thread.sleep(300);
+    /** RemoteService 实例是否已绑定（比仅看 Connecting 更可靠）。 */
+    public static boolean isRemoteServiceBound(ClassLoader cl) {
+        try {
+            Class<?> mgrCls = cl.loadClass("com.aliothmoon.maameow.manager.RemoteServiceManager");
+            Object mgr = XposedHelpers.getStaticObjectField(mgrCls, "INSTANCE");
+            Object service = XposedHelpers.callMethod(mgr, "getInstanceOrNull");
+            return service != null;
+        } catch (Throwable t) {
+            return false;
         }
-        Log.w(TAG, "waitServiceReady timed out after " + timeoutMs + "ms");
+    }
+
+    /**
+     * 等待远程服务可下发任务：
+     * 1) 脱离 Connecting；2) 若超时仍未 Connecting，只要已 bound 也放行。
+     */
+    public static void waitServiceReady(ClassLoader cl, long timeoutMs) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + Math.max(timeoutMs, 0L);
+        while (System.currentTimeMillis() < deadline) {
+            boolean connecting = isRemoteServiceConnecting(cl);
+            if (!connecting) {
+                if (isRemoteServiceBound(cl) || timeoutMs <= 500L) {
+                    return;
+                }
+                // 未 Connecting 也未 bound：再给短暂窗口（冷启动）
+                Thread.sleep(200);
+                if (!isRemoteServiceConnecting(cl)) return;
+            } else {
+                Thread.sleep(300);
+            }
+        }
+        Log.w(TAG, "waitServiceReady timed out after " + timeoutMs
+                + "ms connecting=" + isRemoteServiceConnecting(cl)
+                + " bound=" + isRemoteServiceBound(cl));
     }
 }

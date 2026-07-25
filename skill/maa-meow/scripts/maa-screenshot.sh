@@ -1,4 +1,6 @@
 #!/bin/bash
+# ## Agent 提示: 见 SKILL.md；主任务入口是 meow_sse.sh
+#
 # maa-screenshot.sh — 截 Maa-Meow 主屏 + 虚拟屏
 # Usage:
 #   ./maa-screenshot.sh                  # 截两张 + 拉回本地

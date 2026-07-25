@@ -122,7 +122,7 @@
     "AD-EX-1": {
         "algorithm": "JustReturn",
         "sub": [
-            "AD-EX-1@AD-OpenOpt"
+            "AD-EX-1@AD-EXOpenOpt"
         ],
         "next": [
             "AD-EX-1@SideStoryStage",
@@ -137,7 +137,7 @@
     "AD-EX-2": {
         "algorithm": "JustReturn",
         "sub": [
-            "AD-EX-2@AD-OpenOpt"
+            "AD-EX-2@AD-EXOpenOpt"
         ],
         "next": [
             "AD-EX-2@SideStoryStage",
@@ -152,7 +152,7 @@
     "AD-EX-3": {
         "algorithm": "JustReturn",
         "sub": [
-            "AD-EX-3@AD-OpenOpt"
+            "AD-EX-3@AD-EXOpenOpt"
         ],
         "next": [
             "AD-EX-3@SideStoryStage",
@@ -167,7 +167,7 @@
     "AD-EX-4": {
         "algorithm": "JustReturn",
         "sub": [
-            "AD-EX-4@AD-OpenOpt"
+            "AD-EX-4@AD-EXOpenOpt"
         ],
         "next": [
             "AD-EX-4@SideStoryStage",
@@ -182,7 +182,7 @@
     "AD-EX-5": {
         "algorithm": "JustReturn",
         "sub": [
-            "AD-EX-5@AD-OpenOpt"
+            "AD-EX-5@AD-EXOpenOpt"
         ],
         "next": [
             "AD-EX-5@SideStoryStage",
@@ -197,7 +197,7 @@
     "AD-EX-6": {
         "algorithm": "JustReturn",
         "sub": [
-            "AD-EX-6@AD-OpenOpt"
+            "AD-EX-6@AD-EXOpenOpt"
         ],
         "next": [
             "AD-EX-6@SideStoryStage",
@@ -212,7 +212,7 @@
     "AD-EX-7": {
         "algorithm": "JustReturn",
         "sub": [
-            "AD-EX-7@AD-OpenOpt"
+            "AD-EX-7@AD-EXOpenOpt"
         ],
         "next": [
             "AD-EX-7@SideStoryStage",
@@ -227,7 +227,7 @@
     "AD-EX-8": {
         "algorithm": "JustReturn",
         "sub": [
-            "AD-EX-8@AD-OpenOpt"
+            "AD-EX-8@AD-EXOpenOpt"
         ],
         "next": [
             "AD-EX-8@SideStoryStage",
@@ -237,6 +237,94 @@
     "AD-EX-8@SideStoryStage": {
         "text": [
             "AD-EX-8"
+        ]
+    },
+    "AD-EXOpenOpt": {
+        "algorithm": "JustReturn",
+        "next": [
+            "AD-EXOpenOcr",
+            "AD-EXOpen"
+        ]
+    },
+    "AD-EXOpen": {
+        "baseTask": "SS-Open",
+        "template": [
+            "StageSideStory.png",
+            "StageActivity.png"
+        ],
+        "next": [
+            "AD-EXTab",
+            "AD-EXTabFallback"
+        ]
+    },
+    "AD-EXOpenOcr": {
+        "baseTask": "SS-OpenOcr",
+        "text": [
+            "红丝绒"
+        ],
+        "next": [
+            "AD-EXTab",
+            "AD-EXTabFallback"
+        ]
+    },
+    "AD-EXChapterToAD": {
+        "algorithm": "OcrDetect",
+        "action": "ClickSelf",
+        "text": [
+            "演出开始"
+        ],
+        "preDelay": 2000,
+        "postDelay": 1500,
+        "roi": [
+            1053,
+            402,
+            200,
+            127
+        ],
+        "next": [
+            "AD-EXTab",
+            "AD-EXTabFallback"
+        ]
+    },
+    "AD-EXTab": {
+        "algorithm": "OcrDetect",
+        "action": "ClickSelf",
+        "text": [
+            "EX",
+            "为戏剧",
+            "为永恒",
+            "高难度",
+            "高难"
+        ],
+        "roi": [
+            1000,
+            480,
+            280,
+            240
+        ],
+        "cache": false,
+        "postDelay": 2500,
+        "maxTimes": 3,
+        "next": [
+            "#self",
+            "SideStoryStage",
+            "AD-EXTabFallback",
+            "ChapterSwipeToTheRight"
+        ]
+    },
+    "AD-EXTabFallback": {
+        "algorithm": "JustReturn",
+        "action": "ClickRect",
+        "specificRect": [
+            1160,
+            600,
+            60,
+            60
+        ],
+        "postDelay": 2500,
+        "next": [
+            "SideStoryStage",
+            "ChapterSwipeToTheRight"
         ]
     },
     "AD-OpenOpt": {
@@ -285,6 +373,102 @@
             "#self",
             "SideStoryStage",
             "ChapterSwipeToTheRight"
+        ]
+    },
+    "AD-EX-1@SwipeToStage": {
+        "maxTimes": 5,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-1@ChapterSwipeToTheRight": {
+        "maxTimes": 2,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-2@SwipeToStage": {
+        "maxTimes": 5,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-2@ChapterSwipeToTheRight": {
+        "maxTimes": 2,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-3@SwipeToStage": {
+        "maxTimes": 5,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-3@ChapterSwipeToTheRight": {
+        "maxTimes": 2,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-4@SwipeToStage": {
+        "maxTimes": 5,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-4@ChapterSwipeToTheRight": {
+        "maxTimes": 2,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-5@SwipeToStage": {
+        "maxTimes": 5,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-5@ChapterSwipeToTheRight": {
+        "maxTimes": 2,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-6@SwipeToStage": {
+        "maxTimes": 5,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-6@ChapterSwipeToTheRight": {
+        "maxTimes": 2,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-7@SwipeToStage": {
+        "maxTimes": 5,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-7@ChapterSwipeToTheRight": {
+        "maxTimes": 2,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-8@SwipeToStage": {
+        "maxTimes": 5,
+        "exceededNext": [
+            "Stop"
+        ]
+    },
+    "AD-EX-8@ChapterSwipeToTheRight": {
+        "maxTimes": 2,
+        "exceededNext": [
+            "Stop"
         ]
     }
 }

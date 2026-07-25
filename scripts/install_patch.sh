@@ -36,9 +36,9 @@ $ADB push "$APK_PATH" /data/local/tmp/maameow-patch.apk
 $ADB shell su -c "pm install -r -t /data/local/tmp/maameow-patch.apk"
 
 echo "[lsp] enable module + scope ..."
-$ADB push "$PROJ_ROOT/scripts/launch_copilot.sh" /data/local/tmp/launch_copilot.sh
+$ADB push "$PROJ_ROOT/scripts/run_tasks.sh" /data/local/tmp/run_tasks.sh
 $ADB push "$PROJ_ROOT/scripts/launch_profile.sh" /data/local/tmp/launch_profile.sh
-$ADB shell su -c "chmod 755 /data/local/tmp/launch_copilot.sh /data/local/tmp/launch_profile.sh"
+$ADB shell su -c "chmod 755 /data/local/tmp/run_tasks.sh /data/local/tmp/launch_profile.sh"
 
 $ADB shell su -c "$LSP_CLI modules enable $MODULE_PKG" || echo "WARN: vector-cli enable failed"
 $ADB shell su -c "$LSP_CLI scope set $MODULE_PKG android/0 $MAA_PKG/0" || echo "WARN: vector-cli scope failed"
@@ -49,4 +49,4 @@ $ADB shell su -c "$LSP_CLI config set scope com.tinkerlab.maameowpatch android/0
 $ADB shell su -c "am force-stop $MAA_PKG; am force-stop $MODULE_PKG" || true
 
 echo "Installed $APK_PATH"
-echo "Trigger copilot: adb shell su -c 'sh /data/local/tmp/launch_copilot.sh'"
+echo "Trigger: MODE=copilot adb shell su -c 'sh /data/local/tmp/run_tasks.sh'"

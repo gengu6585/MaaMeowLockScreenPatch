@@ -49,17 +49,17 @@ UNSIGNED="$PROJ_ROOT/app/build/outputs/apk/release/app-release-unsigned.apk"
 
 echo "[deploy] scp + install on $PHONE_SSH ..."
 scp "$APK_PATH" "$PHONE_SSH:/tmp/maameow-patch.apk"
-scp "$PROJ_ROOT/scripts/launch_cli_tasks.sh" "$PHONE_SSH:/tmp/launch_cli_tasks.sh"
-scp "$PROJ_ROOT/scripts/launch_copilot.sh" "$PHONE_SSH:/tmp/launch_copilot.sh" 2>/dev/null || true
+cp "$PROJ_ROOT/skill/maa-meow/scripts/run_tasks.sh" "$PROJ_ROOT/scripts/run_tasks.sh"
+scp "$PROJ_ROOT/scripts/run_tasks.sh" "$PHONE_SSH:/tmp/run_tasks.sh"
+rsync -az "$PROJ_ROOT/skill/maa-meow/" "$PHONE_SSH:/root/.cursor/skills/maa-meow/"
 
 ssh "$PHONE_SSH" bash -s <<REMOTE
 set -euo pipefail
 ADB='$ADB_REMOTE'
 \$ADB push /tmp/maameow-patch.apk /data/local/tmp/maameow-patch.apk
 \$ADB shell su -c 'pm install -r -t /data/local/tmp/maameow-patch.apk'
-\$ADB push /tmp/launch_cli_tasks.sh /data/local/tmp/launch_cli_tasks.sh
-\$ADB shell su -c 'chmod 755 /data/local/tmp/launch_cli_tasks.sh'
-[ -f /tmp/launch_copilot.sh ] && \$ADB push /tmp/launch_copilot.sh /data/local/tmp/launch_copilot.sh && \$ADB shell su -c 'chmod 755 /data/local/tmp/launch_copilot.sh'
+\$ADB push /tmp/run_tasks.sh /data/local/tmp/run_tasks.sh
+\$ADB shell su -c 'chmod 755 /data/local/tmp/run_tasks.sh'
 \$ADB shell su -c '$LSP_CLI modules enable $MODULE_PKG' || echo 'WARN: lsp enable failed'
 \$ADB shell su -c '$LSP_CLI scope set $MODULE_PKG android/0 $MAA_PKG/0' || echo 'WARN: lsp scope failed'
 # 仅重载 Meow 使模块生效；不杀明日方舟
@@ -67,5 +67,6 @@ ADB='$ADB_REMOTE'
 echo OK
 REMOTE
 
-echo "Installed. Example:"
-echo "  ssh $PHONE_SSH \"adb -s emulator-5554 shell su -c 'sh /data/local/tmp/launch_cli_tasks.sh'\""
+echo "Installed 1.2.14+. Example:"
+echo "  ssh $PHONE_SSH \"adb -s emulator-5554 shell su -c 'curl -s http://127.0.0.1:17878/v1/health'\""
+echo "  NOTE: install force-stops Meow only (may interrupt running tasks / VD)."

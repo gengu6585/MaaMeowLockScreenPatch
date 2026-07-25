@@ -1,9 +1,12 @@
 #!/bin/bash
-# MAA 运行环境诊断：进程 / VD / AD.json / 作业 / 最近错误
+# ## Agent 提示: 见 SKILL.md；主任务入口是 meow_sse.sh
+#
+# MAA 运行环境诊断：进程 / VD / HTTP / AD.json / 最近错误
 set -euo pipefail
 ADB="${ADB:-adb -s emulator-5554}"
 PKG=com.aliothmoon.maameow
 GAME=com.hypergryph.arknights
+HTTP_BASE="${HTTP_BASE:-http://127.0.0.1:17878}"
 BASE="/storage/emulated/0/Android/data/${PKG}/files/Maa"
 FAIL=0
 
@@ -21,7 +24,7 @@ fi
 if $ADB shell "pidof $PKG" 2>/dev/null | grep -q '[0-9]'; then
   ok "Meow 进程"
 else
-  warn "Meow 未运行（发 Intent 会拉起）"
+  warn "Meow 未运行（meow_sse 会 am start 拉起）"
 fi
 
 echo
@@ -37,7 +40,7 @@ echo
 echo "=== 3. 补丁模块 ==="
 VER=$($ADB shell dumpsys package com.tinkerlab.maameowpatch 2>/dev/null | grep versionName | head -1 || true)
 echo "  $VER"
-echo "$VER" | grep -q '1\.2' && ok "patch ≥1.2" || warn "建议升级到 1.2.x（RUN_TASKS）"
+echo "$VER" | grep -qE '1\.2\.(9|1[0-9])|1\.[3-9]' && ok "patch ≥1.2.9 (HTTP)" || warn "建议升级到 ≥1.2.10（HTTP/SSE）"
 
 echo
 echo "=== 4. AD.json（红丝绒导航）==="
@@ -65,14 +68,12 @@ $ADB shell "test -f $BASE/copilot/task_list.json && echo yes" | grep -q yes \
   && ok "task_list.json" || warn "缺 task_list.json"
 
 echo
-echo "=== 6. 设备脚本 ==="
-for s in launch_cli_tasks.sh launch_copilot.sh; do
-  if $ADB shell "test -x /data/local/tmp/$s && echo yes" | grep -q yes; then
-    ok "/data/local/tmp/$s"
-  else
-    bad "缺 /data/local/tmp/$s — adb push skill/scripts/$s"
-  fi
-done
+echo "=== 6. HTTP ==="
+if curl -sS --connect-timeout 1 --max-time 2 "$HTTP_BASE/v1/health" >/dev/null 2>&1; then
+  ok "health $HTTP_BASE"
+else
+  warn "HTTP 未就绪（补丁≥1.2.15；meow_sse 会 am start）"
+fi
 
 echo
 echo "=== 7. 最近 meow / asst 异常 ==="
