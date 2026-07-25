@@ -61,7 +61,7 @@ description: >-
 - 每个元素：`type`（与集成文档一致）+ `params`（抄官方示例再改关卡/次数等）。
 - 游戏已在前台且有 VD 时，可省略 `StartUp`。
 - 活动关缺资源时再带 `resource_path` / `resource_overrides`（见 [EXTERNAL_RESOURCE.md](./references/EXTERNAL_RESOURCE.md)）。
-- 链上任一任务失败，后续任务通常**不会**继续——编进同一 JSON 前确认关卡已解锁 / 有代理，或改用 `copilot_list` 首通。
+- Meow 常会在单个 `Fight` 失败后**继续**跑 `tasks` 里后续项（已实测：EX-4 出错仍会开 EX-5）。但无代理时每关都会在 UsePrts 失败——首通请改用下面的 `copilot_list`，或单关 `Fight` 导航 + `skip_navigation` Copilot。
 
 ### 多关卡示例（红丝绒 EX-4～EX-8）
 

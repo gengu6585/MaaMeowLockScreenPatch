@@ -21,7 +21,7 @@
 | 无代理首通多关 | 一个 `Copilot` + `copilot_list`（每项 `filename` + `stage_name`） |
 | 单关首通最稳 | `Fight` 已解锁关导航 → `Copilot` `skip_navigation: true` |
 
-链上失败通常会中断后续任务；解锁/代理没到位时不要硬塞整条链。
+单个 `Fight` 失败后 Meow 仍可能继续后续 `tasks`（已实测）；无代理时连刷会关关 UsePrts 失败——首通用 `copilot_list` 或单关导航+Copilot。
 
 ## 长任务观察（Agent）
 
