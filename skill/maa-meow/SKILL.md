@@ -1,9 +1,9 @@
 ---
 name: maa-meow
 description: >-
-  Maa-Meow：从官方集成协议查 type/params，把多关卡/多任务一次写进同一个 JSON
-  tasks 数组，经 tutu 直连 meow_sse.sh（SSE）下发；禁止自写 shell 循环拆任务。
-  长任务须分节观察日志/SSE，不可一次傻等过久。Agent：root@tutu.gugenzzz.top。
+  明日方舟（Arknights）游戏自动化：刷关、剿灭、活动/EX 首通与抄作业、公招、
+  基建、领奖、肉鸽等。经手机容器 tutu 上的 Maa-Meow HTTP/SSE 下发任务。
+  用户提到明日方舟、MAA、Meow、刷图、剿灭、红丝绒、Copilot/作业时使用。
 ---
 
 # Maa-Meow
@@ -63,28 +63,9 @@ description: >-
 - 活动关缺资源时再带 `resource_path` / `resource_overrides`（见 [EXTERNAL_RESOURCE.md](./references/EXTERNAL_RESOURCE.md)）。
 - Meow 常会在单个 `Fight` 失败后**继续**跑 `tasks` 里后续项（已实测：EX-4 出错仍会开 EX-5）。但无代理时每关都会在 UsePrts 失败——首通请改用下面的 `copilot_list`，或单关 `Fight` 导航 + `skip_navigation` Copilot。
 
-### 多关卡示例（红丝绒 EX-4～EX-8）
+### 多关卡首通示例（红丝绒 EX-4～EX-8）
 
-有代理 / 已首通、用 `Fight` 连刷（**推荐，一次 JSON**）：
-
-```bash
-bash ~/.cursor/skills/maa-meow/scripts/meow_sse.sh '{
-  "force_stop_game": false,
-  "closedown_after": false,
-  "resource_path": "/storage/emulated/0/maa/MaaResource",
-  "resource_overrides": "/storage/emulated/0/maa/overrides",
-  "tasks": [
-    {"type": "StartUp", "params": {"client_type": "Official", "start_game_enabled": true}},
-    {"type": "Fight", "params": {"stage": "AD-EX-4", "medicine": 1, "times": 1}},
-    {"type": "Fight", "params": {"stage": "AD-EX-5", "medicine": 1, "times": 1}},
-    {"type": "Fight", "params": {"stage": "AD-EX-6", "medicine": 1, "times": 1}},
-    {"type": "Fight", "params": {"stage": "AD-EX-7", "medicine": 1, "times": 1}},
-    {"type": "Fight", "params": {"stage": "AD-EX-8", "medicine": 1, "times": 1}}
-  ]
-}'
-```
-
-无代理首通：用**一个** `Copilot` + `copilot_list`（作业须已在设备 copilot 目录；`stage_name` 用显示名）：
+未首通 / 无代理：用**一个** `Copilot` + `copilot_list`（一次 JSON，不要 shell 循环）：
 
 ```bash
 COPILOT=/storage/emulated/0/Android/data/com.aliothmoon.maameow/files/Maa/copilot
@@ -93,26 +74,29 @@ bash ~/.cursor/skills/maa-meow/scripts/meow_sse.sh "{
   \"closedown_after\": false,
   \"resource_path\": \"/storage/emulated/0/maa/MaaResource\",
   \"resource_overrides\": \"/storage/emulated/0/maa/overrides\",
-  \"tasks\": [{
-    \"type\": \"Copilot\",
-    \"params\": {
-      \"formation\": true,
-      \"ignore_requirements\": true,
-      \"loop_times\": 1,
-      \"use_sanity_potion\": true,
-      \"copilot_list\": [
-        {\"filename\": \"${COPILOT}/96315_AD-EX-4.json\", \"stage_name\": \"AD-EX-4\"},
-        {\"filename\": \"${COPILOT}/96316_AD-EX-5.json\", \"stage_name\": \"AD-EX-5\"},
-        {\"filename\": \"${COPILOT}/96317_AD-EX-6.json\", \"stage_name\": \"AD-EX-6\"},
-        {\"filename\": \"${COPILOT}/96318_AD-EX-7.json\", \"stage_name\": \"AD-EX-7\"},
-        {\"filename\": \"${COPILOT}/97884_AD-EX-8.json\", \"stage_name\": \"AD-EX-8\"}
-      ]
+  \"tasks\": [
+    {\"type\": \"StartUp\", \"params\": {\"client_type\": \"Official\", \"start_game_enabled\": true}},
+    {
+      \"type\": \"Copilot\",
+      \"params\": {
+        \"formation\": true,
+        \"ignore_requirements\": true,
+        \"loop_times\": 1,
+        \"use_sanity_potion\": true,
+        \"copilot_list\": [
+          {\"filename\": \"${COPILOT}/96315_AD-EX-4.json\", \"stage_name\": \"AD-EX-4\"},
+          {\"filename\": \"${COPILOT}/96316_AD-EX-5.json\", \"stage_name\": \"AD-EX-5\"},
+          {\"filename\": \"${COPILOT}/96317_AD-EX-6.json\", \"stage_name\": \"AD-EX-6\"},
+          {\"filename\": \"${COPILOT}/96318_AD-EX-7.json\", \"stage_name\": \"AD-EX-7\"},
+          {\"filename\": \"${COPILOT}/97884_AD-EX-8.json\", \"stage_name\": \"AD-EX-8\"}
+        ]
+      }
     }
-  }]
+  ]
 }"
 ```
 
-`copilot_list` 导航不稳时：回到「EX 首通」单关 `Fight` 导航 → `Copilot` + `skip_navigation`（仍用 `meow_sse`，不要写 shell 循环）。
+已首通有代理后的日常刷图再用多个 `Fight`。`copilot_list` 导航不稳时：单关 `Fight` 导航 → `Copilot` + `skip_navigation`。
 
 ### 3. 下发
 

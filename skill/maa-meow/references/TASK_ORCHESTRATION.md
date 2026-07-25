@@ -17,9 +17,9 @@
 
 | 场景 | 写法 |
 |---|---|
-| 有代理连刷 EX-4～8 | 多个 `Fight`，`stage` 各写一关，同一 `tasks` |
-| 无代理首通多关 | 一个 `Copilot` + `copilot_list`（每项 `filename` + `stage_name`） |
-| 单关首通最稳 | `Fight` 已解锁关导航 → `Copilot` `skip_navigation: true` |
+| 无代理首通多关（如 EX-4～8） | **一个** `Copilot` + `copilot_list`（每项 `filename` + `stage_name`） |
+| 单关首通备选 | `Fight` 已解锁关导航 → `Copilot` `skip_navigation: true` |
+| 已首通有代理连刷 | 多个 `Fight`，同一 `tasks` |
 
 单个 `Fight` 失败后 Meow 仍可能继续后续 `tasks`（已实测）；无代理时连刷会关关 UsePrts 失败——首通用 `copilot_list` 或单关导航+Copilot。
 
