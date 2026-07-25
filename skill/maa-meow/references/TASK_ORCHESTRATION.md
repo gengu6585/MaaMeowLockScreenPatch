@@ -1,33 +1,39 @@
 # 任务编排补充
 
-主流程见 [SKILL.md](../SKILL.md)「怎么编排任务」。本文只补细节。
+主流程见 [SKILL.md](../SKILL.md)「怎么编排任务」。
+
+## 原则
+
+1. **一次 JSON**：多关卡 / 多任务全部放进同一个 `tasks`（或一个 `Copilot.copilot_list`），一次 `meow_sse.sh`。
+2. **跟着 SSE**：不要自写 shell `for` 串关；会丢掉实时日志，出错也无法及时 `stop`。
+3. **长任务分节看**：前台 SSE 最佳；后台则 **20–60s** 轮询 `/v1/status` 或 `/v1/events`，禁止一次傻等过久。
 
 ## 权威来源
 
-[集成协议](https://docs.maa.plus/zh-cn/protocol/integration.html) 的任务表 = `type` / `params` 唯一权威。  
-本仓 [MAA_TASKS.md](./MAA_TASKS.md) 是能力摘要；字段以官方为准。
+[集成协议](https://docs.maa.plus/zh-cn/protocol/integration.html) = `type` / `params` 权威。  
+能力摘要：[MAA_TASKS.md](./MAA_TASKS.md)。
 
-## Body 形状
+## 多关卡怎么写
 
-| 字段 | 说明 |
+| 场景 | 写法 |
 |---|---|
-| `tasks` | 必填数组，顺序执行 |
-| `force_stop_game` | 固定 `false` |
-| `closedown_after` | 固定 `false` |
-| `resource_path` / `resource_overrides` | 可选；见 [EXTERNAL_RESOURCE.md](./EXTERNAL_RESOURCE.md) |
+| 有代理连刷 EX-4～8 | 多个 `Fight`，`stage` 各写一关，同一 `tasks` |
+| 无代理首通多关 | 一个 `Copilot` + `copilot_list`（每项 `filename` + `stage_name`） |
+| 单关首通最稳 | `Fight` 已解锁关导航 → `Copilot` `skip_navigation: true` |
 
-下发：`meow_sse.sh '<json>'` 或 stdin。API：`POST /v1/tasks?stream=1`。
+链上失败通常会中断后续任务；解锁/代理没到位时不要硬塞整条链。
 
-## 常见链
+## 长任务观察（Agent）
 
-| 需求 | 任务链思路 |
-|---|---|
-| 日常 | `Award` → `Recruit` → `Infrast`（params 抄集成文档） |
-| 刷图 | `Fight`：`stage` / `medicine` / `times` |
-| 抄作业 | `Copilot`：`filename`；已在备战页则 `skip_navigation: true` |
-| EX 首通 | 已解锁关 `Fight` 导航 → stop → `Copilot` + `skip_navigation` |
-| 干员识别 | `OperBox`（见 `run_operbox.sh`） |
+```bash
+# 推荐：前台，SSE 实时
+TIMEOUT_MS=3600000 bash ~/.cursor/skills/maa-meow/scripts/meow_sse.sh '...'
 
-## SSE
+# 若后台：短间隔轮询（示例 30s）
+while curl -sS http://127.0.0.1:17878/v1/status | grep -q '"active":true'; do
+  curl -sS 'http://127.0.0.1:17878/v1/events?limit=5'
+  sleep 30
+done
+```
 
-`timeout_ms` 只关流，不 stop 任务（`task_stopped=false`）。要停：`POST /v1/stop`。
+见 `任务出错` / `FAILED` → 立刻查 `last_error` / meow_log，决定停或改 params。

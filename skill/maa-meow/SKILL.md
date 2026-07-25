@@ -1,8 +1,9 @@
 ---
 name: maa-meow
 description: >-
-  Maa-Meow：从官方集成协议查 type/params，拼 JSON 任务链，经 tutu 直连
-  Meow HTTP/SSE（meow_sse.sh）下发。仅拉起用 adb。Agent：root@tutu.gugenzzz.top。
+  Maa-Meow：从官方集成协议查 type/params，把多关卡/多任务一次写进同一个 JSON
+  tasks 数组，经 tutu 直连 meow_sse.sh（SSE）下发；禁止自写 shell 循环拆任务。
+  长任务须分节观察日志/SSE，不可一次傻等过久。Agent：root@tutu.gugenzzz.top。
 ---
 
 # Maa-Meow
@@ -23,10 +24,12 @@ description: >-
 3. 任务用 **JSON 字符串** 直传（不要为每次请求写临时文件）
 4. `resource_path` 仅在 body 里带时才注入外置资源
 5. **禁止向本 skill 目录写入临时脚本/日志/JSON**（含 `scripts/`、`scripts/examples/`）。编排调试用的一次性脚本只放在**当前工作区**或 `/tmp`；skill 目录仅保留仓库维护的必要工具
+6. **多关卡/多任务必须一次编排进同一个 `tasks` 数组**，用一次 `meow_sse.sh` 下发并跟着 SSE 看进度。禁止为串关自写 `for`/`while` shell（会丢掉实时 SSE，也无法在出错时及时停）。
+7. **长任务观察**：优先前台跑 `meow_sse.sh`（实时行输出）。若必须后台：每隔 **20–60s** 查一次 `/v1/status` 或 `/v1/events`（或读 SSE 增量），**禁止**一次 `wait`/`sleep` 数十分钟；出现 `任务出错` / `result=FAILED` / 长时间无新日志要立刻读日志并决定 `stop` 或改 params 重试。
 
 ## 怎么编排任务
 
-用户要做某事时：**先查官方协议拿 `type`/`params`，再拼进 `tasks` 一次下发**。不要臆造字段。
+用户要做某事时：**先查官方协议拿 `type`/`params`，再拼进同一个 `tasks` 一次下发**。不要臆造字段，不要拆成多个临时脚本。
 
 ### 1. 查官方文档
 
@@ -54,10 +57,62 @@ description: >-
 }
 ```
 
-- `tasks`：**数组，按顺序执行**；尽量一次链跑完，勿中途 stop 再启。
+- `tasks`：**数组，按顺序执行**；多关卡就写多个元素（或一个 `Copilot` + `copilot_list`），一次链跑完。
 - 每个元素：`type`（与集成文档一致）+ `params`（抄官方示例再改关卡/次数等）。
 - 游戏已在前台且有 VD 时，可省略 `StartUp`。
 - 活动关缺资源时再带 `resource_path` / `resource_overrides`（见 [EXTERNAL_RESOURCE.md](./references/EXTERNAL_RESOURCE.md)）。
+- 链上任一任务失败，后续任务通常**不会**继续——编进同一 JSON 前确认关卡已解锁 / 有代理，或改用 `copilot_list` 首通。
+
+### 多关卡示例（红丝绒 EX-4～EX-8）
+
+有代理 / 已首通、用 `Fight` 连刷（**推荐，一次 JSON**）：
+
+```bash
+bash ~/.cursor/skills/maa-meow/scripts/meow_sse.sh '{
+  "force_stop_game": false,
+  "closedown_after": false,
+  "resource_path": "/storage/emulated/0/maa/MaaResource",
+  "resource_overrides": "/storage/emulated/0/maa/overrides",
+  "tasks": [
+    {"type": "StartUp", "params": {"client_type": "Official", "start_game_enabled": true}},
+    {"type": "Fight", "params": {"stage": "AD-EX-4", "medicine": 1, "times": 1}},
+    {"type": "Fight", "params": {"stage": "AD-EX-5", "medicine": 1, "times": 1}},
+    {"type": "Fight", "params": {"stage": "AD-EX-6", "medicine": 1, "times": 1}},
+    {"type": "Fight", "params": {"stage": "AD-EX-7", "medicine": 1, "times": 1}},
+    {"type": "Fight", "params": {"stage": "AD-EX-8", "medicine": 1, "times": 1}}
+  ]
+}'
+```
+
+无代理首通：用**一个** `Copilot` + `copilot_list`（作业须已在设备 copilot 目录；`stage_name` 用显示名）：
+
+```bash
+COPILOT=/storage/emulated/0/Android/data/com.aliothmoon.maameow/files/Maa/copilot
+bash ~/.cursor/skills/maa-meow/scripts/meow_sse.sh "{
+  \"force_stop_game\": false,
+  \"closedown_after\": false,
+  \"resource_path\": \"/storage/emulated/0/maa/MaaResource\",
+  \"resource_overrides\": \"/storage/emulated/0/maa/overrides\",
+  \"tasks\": [{
+    \"type\": \"Copilot\",
+    \"params\": {
+      \"formation\": true,
+      \"ignore_requirements\": true,
+      \"loop_times\": 1,
+      \"use_sanity_potion\": true,
+      \"copilot_list\": [
+        {\"filename\": \"${COPILOT}/96315_AD-EX-4.json\", \"stage_name\": \"AD-EX-4\"},
+        {\"filename\": \"${COPILOT}/96316_AD-EX-5.json\", \"stage_name\": \"AD-EX-5\"},
+        {\"filename\": \"${COPILOT}/96317_AD-EX-6.json\", \"stage_name\": \"AD-EX-6\"},
+        {\"filename\": \"${COPILOT}/96318_AD-EX-7.json\", \"stage_name\": \"AD-EX-7\"},
+        {\"filename\": \"${COPILOT}/97884_AD-EX-8.json\", \"stage_name\": \"AD-EX-8\"}
+      ]
+    }
+  }]
+}"
+```
+
+`copilot_list` 导航不稳时：回到「EX 首通」单关 `Fight` 导航 → `Copilot` + `skip_navigation`（仍用 `meow_sse`，不要写 shell 循环）。
 
 ### 3. 下发
 
